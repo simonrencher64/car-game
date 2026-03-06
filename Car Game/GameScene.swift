@@ -254,6 +254,11 @@ class GameScene: SKScene {
         
         if(abs(car.position.x - endposition.x) < 1000) && (abs(car.position.y - endposition.y) < 1000){
             car.color = .purple
+            let nextScene = EndScene(fileNamed: "EndScene")
+            nextScene?.finalScore = round(time/60*10)/10
+            nextScene?.scaleMode = .aspectFill
+            let transition = SKTransition.fade(withDuration: 1.0)
+            view?.presentScene(nextScene!, transition: transition)
         }
     }
     
