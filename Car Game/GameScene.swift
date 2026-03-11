@@ -11,14 +11,14 @@ import GameplayKit
 class GameScene: SKScene {
     
     //car handling variables
-    var maxSpeed: CGFloat = 1000
-    var acceleration: CGFloat = 500
-    var turnSpeed: CGFloat = 0.002
+    var maxSpeed: CGFloat = 2000
+    var acceleration: CGFloat = 2000
+    var turnSpeed: CGFloat = 0.001
     var turnDampner: CGFloat = 6
     
     //camera variables
     var cameraRotationDampner: CGFloat = 20
-    var cameraScale: CGFloat = 3
+    var cameraScale: CGFloat = 4
     var cameraYOffset: CGFloat = 1000
     
     //road variables
@@ -90,9 +90,14 @@ class GameScene: SKScene {
         
         
         for _ in 1...trackLength {
+            let randomNum = Int.random(in: 0...1)
+            if randomNum == 0 {
+                angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: -Double.pi/8)
+            } else {
+                angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: Double.pi/8)
+            }
             
-            
-            angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: Double.random(in: -Double.pi/4...Double.pi/4))
+//            angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: Double.random(in: -Double.pi/6...Double.pi/6))
         }
         endposition = CGPoint(x: roadPosition.x, y: roadPosition.y)
         
