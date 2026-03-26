@@ -8,21 +8,25 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+class GameScene: SKScene, SKPhysicsContactDelegate {
+    
+    let none: UInt32 = 0
+    let carCategory: UInt32 = 0x1 << 0
+    let wallCategory: UInt32 = 0x1 << 1
     
     //car handling variables
-    var maxSpeed: CGFloat = 2000
-    var acceleration: CGFloat = 2000
-    var turnSpeed: CGFloat = 0.001
+    var maxSpeed: CGFloat = 1000
+    var acceleration: CGFloat = 1000
+    var turnSpeed: CGFloat = 0.01
     var turnDampner: CGFloat = 6
     
     //camera variables
     var cameraRotationDampner: CGFloat = 20
-    var cameraScale: CGFloat = 4
+    var cameraScale: CGFloat = 6
     var cameraYOffset: CGFloat = 1000
     
     //road variables
-    var roadSize = CGFloat(800)
+    var roadSize = CGFloat(1200)
     var wallThickness: CGFloat = 100
     var roadSectionLength: CGFloat = 1000
     var trackLength = 100
@@ -54,6 +58,9 @@ class GameScene: SKScene {
     
     
     override func didMove(to view: SKView) {
+        
+        self.physicsWorld.contactDelegate = self
+        
         sceneCamera.xScale = cameraScale
         sceneCamera.yScale = cameraScale
         camera = sceneCamera
@@ -82,6 +89,8 @@ class GameScene: SKScene {
         car = SKSpriteNode(color: .blue, size: CGSize(width: 200, height: 100))
         car.position = CGPoint(x: 0, y: 0)
         car.physicsBody = SKPhysicsBody(rectangleOf: car.size)
+        car.physicsBody?.categoryBitMask = carCategory
+        car.physicsBody?.collisionBitMask = wallCategory
         addChild(car)
         
         
@@ -92,9 +101,9 @@ class GameScene: SKScene {
         for _ in 1...trackLength {
             let randomNum = Int.random(in: 0...1)
             if randomNum == 0 {
-                angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: -Double.pi/8)
+                angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: -Double.pi/4)
             } else {
-                angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: Double.pi/8)
+                angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: Double.pi/4)
             }
             
 //            angledRoad(startx: roadPosition.x, starty: roadPosition.y, length: roadSectionLength, startAngle: roadRotation, angleChange: Double.random(in: -Double.pi/6...Double.pi/6))
@@ -130,21 +139,7 @@ class GameScene: SKScene {
     }
     
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
-//        var isOverLeftButton = false
-//        var isOverRightButton = false
-//        
-//        for touch in touches {
-//            let touchPosition = touch.location(in: self)
-//            let touchPositionConvertedToCamera = convert(touchPosition, to: sceneCamera)
-//            if leftButton.frame.contains(touchPositionConvertedToCamera){
-//                isLeftPressed = true
-//            } else if rightButton.frame.contains(touchPositionConvertedToCamera){
-//                isRightPressed = true
-//            }
-            
-//            isLeftPressed = isOverLeftButton
-//            isRightPressed = isOverRightButton
-//        }
+        
     }
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -244,12 +239,16 @@ class GameScene: SKScene {
         }
         
         //testText.text = "\(cameraRotation)"
-        
-        if abs(car.zRotation - atan2(car.physicsBody!.velocity.dy, car.physicsBody!.velocity.dx)) > 0.5{
-            particleEffect(x: car.position.x - cos(car.zRotation)*100 + cos(car.zRotation-Double.pi/2)*50, y: car.position.y - sin(car.zRotation)*100 + sin(car.zRotation-Double.pi/2)*50,rotation: car.zRotation, color: .black)
-            particleEffect(x: car.position.x - cos(car.zRotation)*100 + cos(car.zRotation+Double.pi/2)*50, y: car.position.y - sin(car.zRotation)*100 + sin(car.zRotation+Double.pi/2)*50,rotation: car.zRotation, color: .black)
+        let carVelocityAngle = atan2(car.physicsBody!.velocity.dy, car.physicsBody!.velocity.dx)
+        var carDriftMagnitude = abs(shortestAngleChange(start: car.zRotation, end: carVelocityAngle))
+        if carDriftMagnitude > 1{
+            carDriftMagnitude = 1
         }
         
+        driftParticle(x: car.position.x - cos(car.zRotation)*100 + cos(car.zRotation-Double.pi/2)*50, y: car.position.y - sin(car.zRotation)*100 + sin(car.zRotation-Double.pi/2)*50,rotation: carVelocityAngle, color: .black, strength: carDriftMagnitude-0.2)
+        driftParticle(x: car.position.x - cos(car.zRotation)*100 + cos(car.zRotation+Double.pi/2)*50, y: car.position.y - sin(car.zRotation)*100 + sin(car.zRotation+Double.pi/2)*50,rotation: carVelocityAngle, color: .black, strength: carDriftMagnitude-0.2)
+        
+
         sceneCamera.position.x = car.position.x + cos(cameraRotation) * cameraYOffset
         sceneCamera.position.y = car.position.y + sin(cameraRotation) * cameraYOffset
         sceneCamera.zRotation = cameraRotation - Double.pi/2
@@ -284,12 +283,13 @@ class GameScene: SKScene {
         return end - start
     }
     
-    func particleEffect(x: CGFloat, y: CGFloat, rotation: CGFloat, color: UIColor){
-        particle = SKSpriteNode(color: color, size: CGSize(width: 10, height: 10))
+    func driftParticle(x: CGFloat, y: CGFloat, rotation: CGFloat, color: UIColor, strength: CGFloat){
+        particle = SKSpriteNode(color: color, size: CGSize(width: 40, height: 20))
         particle.position = CGPoint(x: x, y: y)
         particle.zRotation = rotation
+        particle.alpha = strength
         addChild(particle)
-        let sequence = SKAction.sequence([SKAction.fadeOut(withDuration: 10), SKAction.removeFromParent()])
+        let sequence = SKAction.sequence([SKAction.fadeOut(withDuration: 10*strength), SKAction.removeFromParent()])
         particle.run(sequence)
     }
     
@@ -299,6 +299,7 @@ class GameScene: SKScene {
         wall.zRotation = rotation
         wall.physicsBody = SKPhysicsBody(rectangleOf: wall.size)
         wall.physicsBody?.isDynamic = false
+        wall.physicsBody?.categoryBitMask = wallCategory
         addChild(wall)
     }
     
@@ -311,6 +312,7 @@ class GameScene: SKScene {
         wall.position = CGPoint(x: x, y: y)
         wall.physicsBody = SKPhysicsBody(circleOfRadius: radius)
         wall.physicsBody?.isDynamic = false
+        wall.physicsBody?.categoryBitMask = wallCategory
         
         addChild(wall)
         wall.addChild(shapeNode)
